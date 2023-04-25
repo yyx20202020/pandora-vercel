@@ -19,7 +19,7 @@ __version__ = '0.0.7'
 class ChatBot:
     __default_ip = '127.0.0.1'
     __default_port = 3000
-    __build_id = 'tTShkecJDS0nIc9faO2vC'
+    build_id = 'tTShkecJDS0nIc9faO2vC'
 
     def __init__(self, proxy=None, debug=False, sentry=False, login_local=False):
         self.proxy = proxy
@@ -32,37 +32,8 @@ class ChatBot:
         hook_logging(level=self.log_level, format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
         self.logger = logging.getLogger('waitress')
 
-    def run(self, bind_str, threads=4):
-        host, port = self.__parse_bind(bind_str)
-
-        resource_path = abspath(join(dirname(__file__), 'flask'))
-        app = Flask(__name__, static_url_path='',
-                    static_folder=join(resource_path, 'static'),
-                    template_folder=join(resource_path, 'templates'))
-        app.wsgi_app = ProxyFix(app.wsgi_app, x_port=1)
-        app.after_request(self.__after_request)
-
-        app.route('/api/auth/session')(self.session)
-        app.route('/api/accounts/check')(self.check)
-        app.route('/api/auth/signout', methods=['POST'])(self.logout)
-        app.route('/_next/data/{}/chat.json'.format(self.__build_id))(self.chat_info)
-
-        app.route('/')(self.chat)
-        app.route('/chat')(self.chat)
-        app.route('/chat/<conversation_id>')(self.chat)
-
-        app.route('/login')(self.login)
-        app.route('/login', methods=['POST'])(self.login_post)
-        app.route('/login_token', methods=['POST'])(self.login_token)
-
-        if not self.debug:
-            self.logger.warning('Serving on http://{}:{}'.format(host, port))
-
-        WSGIRequestHandler.protocol_version = 'HTTP/1.1'
-        serve(app, host=host, port=port, ident=None, threads=threads)
-
     @staticmethod
-    def __after_request(resp):
+    def after_request(resp):
         resp.headers['X-Server'] = 'pandora-cloud/{}'.format(__version__)
 
         return resp
@@ -252,4 +223,23 @@ class ChatBot:
         return jsonify(ret)
 
 bot = ChatBot()
-bot.run('127.0.0.1:3000')
+resource_path = abspath(join(dirname(__file__), 'flask'))
+app = Flask(__name__, static_url_path='',
+            static_folder=join(resource_path, 'static'),
+            template_folder=join(resource_path, 'templates'))
+app.wsgi_app = ProxyFix(app.wsgi_app, x_port=1)
+app.after_request(bot.after_request)
+
+app.route('/api/auth/session')(bot.session)
+app.route('/api/accounts/check')(bot.check)
+app.route('/api/auth/signout', methods=['POST'])(bot.logout)
+app.route('/_next/data/{}/chat.json'.format(bot.build_id)
+          )(bot.chat_info)
+
+app.route('/')(bot.chat)
+app.route('/chat')(bot.chat)
+app.route('/chat/<conversation_id>')(bot.chat)
+
+app.route('/login')(bot.login)
+app.route('/login', methods=['POST'])(bot.login_post)
+app.route('/login_token', methods=['POST'])(bot.login_token)
