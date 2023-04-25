@@ -13,15 +13,15 @@ from waitress import serve
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.serving import WSGIRequestHandler
 
-from . import __version__
+__version__ = '0.0.7'
 
 
 class ChatBot:
     __default_ip = '127.0.0.1'
-    __default_port = 8018
+    __default_port = 3000
     __build_id = 'tTShkecJDS0nIc9faO2vC'
 
-    def __init__(self, proxy, debug=False, sentry=False, login_local=False):
+    def __init__(self, proxy=None, debug=False, sentry=False, login_local=False):
         self.proxy = proxy
         self.debug = debug
         self.sentry = sentry
@@ -250,3 +250,7 @@ class ChatBot:
         }
 
         return jsonify(ret)
+
+if __name__=='__main__':
+    bot = ChatBot()
+    bot.run('127.0.0.1:3000')
