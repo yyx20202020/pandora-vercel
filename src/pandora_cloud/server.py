@@ -38,17 +38,6 @@ class ChatBot:
 
         return resp
 
-    def __parse_bind(self, bind_str):
-        sections = bind_str.split(':', 2)
-        if len(sections) < 2:
-            try:
-                port = int(sections[0])
-                return self.__default_ip, port
-            except ValueError:
-                return sections[0], self.__default_port
-
-        return sections[0], int(sections[1])
-
     @staticmethod
     def __set_cookie(resp, token, expires):
         resp.set_cookie('access-token', token, expires=expires, path='/', domain=None, httponly=True, samesite='Lax')
