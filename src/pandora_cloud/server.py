@@ -130,7 +130,7 @@ class ChatBot:
             },
             'page': '/chat/[[...chatId]]',
             'query': {'chatId': [conversation_id]} if conversation_id else {},
-            'buildId': self.__build_id,
+            'buildId': self.build_id,
             'isFallback': False,
             'gssp': True,
             'scriptLoader': []
@@ -211,7 +211,7 @@ class ChatBot:
 
         return jsonify(ret)
 
-bot = ChatBot()
+bot = ChatBot(login_local=True)
 resource_path = abspath(join(dirname(__file__), 'flask'))
 app = Flask(__name__, static_url_path='',
             static_folder=join(resource_path, 'static'),
