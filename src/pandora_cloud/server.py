@@ -234,6 +234,3 @@ app.route('/login')(bot.login)
 app.route('/login', methods=['POST'])(bot.login_post)
 app.route('/login_token', methods=['POST'])(bot.login_token)
 
-
-if __name__=='__main__':
-    app.run(host='127.0.0.1',port=8080)
