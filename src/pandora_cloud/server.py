@@ -128,7 +128,7 @@ class ChatBot:
                 },
                 '__N_SSP': True
             },
-            'page': '/chat/chatId',
+            'page': '/chat/[[...chatId]]',
             'query': {'chatId': [conversation_id]} if conversation_id else {},
             'buildId': self.build_id,
             'isFallback': False,
