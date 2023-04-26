@@ -213,7 +213,7 @@ class ChatBot:
 
         return jsonify(ret)
 
-bot = ChatBot(debug=True,login_local=True)
+bot = ChatBot()
 resource_path = abspath(join(dirname(__file__), 'flask'))
 app = Flask(__name__, static_url_path='',
             static_folder=join(resource_path, 'static'),
