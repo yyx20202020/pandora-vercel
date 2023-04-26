@@ -9,9 +9,7 @@ from flask import Flask, jsonify, request, render_template, redirect, url_for, m
 from pandora.exts.hooks import hook_logging
 from pandora.exts.token import check_access_token
 from pandora.openai.auth import Auth0
-from waitress import serve
 from werkzeug.middleware.proxy_fix import ProxyFix
-from werkzeug.serving import WSGIRequestHandler
 
 __version__ = '0.0.7'
 
@@ -80,7 +78,7 @@ class ChatBot:
 
                 return resp
             except Exception as e:
-                logging.exception('发生错误1')
+                # logging.exception('发生错误1')
                 error = str(e)
 
         return render_template('login.html', username=username, error=error, api_prefix=self.api_prefix)
@@ -98,7 +96,7 @@ class ChatBot:
 
                 return resp
             except Exception as e:
-                logging.exception('发生错误2')
+                # logging.exception('发生错误2')
                 error = str(e)
 
         return jsonify({'code': 500, 'message': 'Invalid access token: {}'.format(error)})

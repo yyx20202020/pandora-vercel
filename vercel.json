@@ -11,7 +11,7 @@
       "destination": "src/pandora_cloud/server.py"
     },
     {
-      "source": "/_next/static/chunks/pages/chat/%5B%5B...chatId%5D%5D-2b434f3f0b594dba.js",
+      "source": "/_next/static/chunks/pages/chat/\\[\\[\\.\\.\\.chatId\\]\\]-2b434f3f0b594dba.js",
       "destination": "/src/pandora_cloud/flask/static/_next/static/chunks/pages/chat/[[...chatId]]-2b434f3f0b594dba.js"
     }
   ]
