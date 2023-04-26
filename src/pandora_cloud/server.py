@@ -80,6 +80,7 @@ class ChatBot:
 
                 return resp
             except Exception as e:
+                logging.exception('发生错误1')
                 error = str(e)
 
         return render_template('login.html', username=username, error=error, api_prefix=self.api_prefix)
@@ -97,6 +98,7 @@ class ChatBot:
 
                 return resp
             except Exception as e:
+                logging.exception('发生错误2')
                 error = str(e)
 
         return jsonify({'code': 500, 'message': 'Invalid access token: {}'.format(error)})
@@ -130,7 +132,7 @@ class ChatBot:
             },
             'page': '/chat/[[...chatId]]',
             'query': {'chatId': [conversation_id]} if conversation_id else {},
-            'buildId': self.__build_id,
+            'buildId': self.build_id,
             'isFallback': False,
             'gssp': True,
             'scriptLoader': []
@@ -211,11 +213,12 @@ class ChatBot:
 
         return jsonify(ret)
 
-bot = ChatBot()
+bot = ChatBot(debug=True,login_local=True)
 resource_path = abspath(join(dirname(__file__), 'flask'))
 app = Flask(__name__, static_url_path='',
             static_folder=join(resource_path, 'static'),
             template_folder=join(resource_path, 'templates'))
+app.debug = True
 app.wsgi_app = ProxyFix(app.wsgi_app, x_port=1)
 app.after_request(bot.after_request)
 
@@ -232,3 +235,7 @@ app.route('/chat/<conversation_id>')(bot.chat)
 app.route('/login')(bot.login)
 app.route('/login', methods=['POST'])(bot.login_post)
 app.route('/login_token', methods=['POST'])(bot.login_token)
+
+
+if __name__=='__main__':
+    app.run(host='127.0.0.1',port=8080)
