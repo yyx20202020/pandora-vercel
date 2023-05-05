@@ -7,12 +7,12 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "src/pandora_cloud/server.py"
+      "source":"/_next/static/chunks/pages/c/%5BchatId%5D-5eca16927a2db1d2.js",
+      "destination": "/src/pandora_cloud/flask/static/_next/static/chunks/pages/c/[chatId]-5eca16927a2db1d2.js"
     },
     {
-      "source": "/_next/static/chunks/pages/chat/\\[\\[\\.\\.\\.chatId\\]\\]-2b434f3f0b594dba.js",
-      "destination": "/src/pandora_cloud/flask/static/_next/static/chunks/pages/chat/[[...chatId]]-2b434f3f0b594dba.js"
+      "source": "/(.*)",
+      "destination": "src/pandora_cloud/server.py"
     }
   ]
 }
