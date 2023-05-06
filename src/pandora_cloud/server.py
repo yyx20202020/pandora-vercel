@@ -123,7 +123,7 @@ class ChatBot:
                 },
                 '__N_SSP': True
             },
-            'page': '/c/[chatId]' if conversation_id else '/',
+            'page': '/c/chatId' if conversation_id else '/',
             'query': {'chatId': conversation_id} if conversation_id else {},
             'buildId': self.build_id,
             'isFallback': False,

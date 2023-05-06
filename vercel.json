@@ -7,8 +7,8 @@
   ],
   "rewrites": [
     {
-      "source":"/_next/static/chunks/pages/c/%5BchatId%5D-5eca16927a2db1d2.js",
-      "destination": "/src/pandora_cloud/flask/static/_next/static/chunks/pages/c/[chatId]-5eca16927a2db1d2.js"
+      "source":"/_next/static/chunks/pages/c/\\[chatId\\]-5eca16927a2db1d2.js",
+      "destination": "/src/pandora_cloud/flask/static/_next/static/chunks/pages/c/\\[chatId\\]-5eca16927a2db1d2.js"
     },
     {
       "source": "/(.*)",
