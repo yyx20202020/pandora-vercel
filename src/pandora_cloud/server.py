@@ -20,7 +20,7 @@ class ChatBot:
         self.proxy = proxy
         self.debug = debug
         self.sentry = sentry
-        self.login_local = login_local
+        self.login_local = getenv('LOGIN_LOCAL',False)
         self.log_level = logging.DEBUG if debug else logging.WARN
         self.api_prefix = getenv('CHATGPT_API_PREFIX',
                                  'https://ai.fakeopen.com')
@@ -56,7 +56,8 @@ class ChatBot:
         return resp
 
     def login(self):
-        return render_template('login.html', api_prefix=self.api_prefix)
+        template = 'login_full.html' if self.login_local else 'login.html'
+        return render_template(template, api_prefix=self.api_prefix)
 
     def login_post(self):
         username = request.form.get('username')
@@ -77,7 +78,8 @@ class ChatBot:
             except Exception as e:
                 error = str(e)
 
-        return render_template('login.html', username=username, error=error, api_prefix=self.api_prefix)
+        template = 'login_full.html' if self.login_local else 'login.html'
+        return render_template(template, username=username, error=error, api_prefix=self.api_prefix)
 
     def login_token(self):
         access_token = request.form.get('access_token')
