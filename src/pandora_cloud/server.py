@@ -14,9 +14,9 @@ __version__ = '0.1.0'
 
 
 class ChatBot:
-    build_id = 'Ug4VsRcis1rOKSKp_XHna'
+    build_id = '35uzIQibpwv56FyPcgmGz'
 
-    def __init__(self, proxy=None, debug=False, sentry=False, login_local=False):
+    def __init__(self, proxy=None, debug=False, sentry=False):
         self.proxy = proxy
         self.debug = debug
         self.sentry = sentry
@@ -48,6 +48,12 @@ class ChatBot:
         email = payload['https://api.openai.com/profile']['email']
 
         return False, user_id, email, access_token, payload
+    
+    @staticmethod
+    def chat_index(conversation_id=None):
+        resp = redirect('/')
+
+        return resp
 
     def logout(self):
         resp = redirect(url_for('login'))
@@ -56,8 +62,7 @@ class ChatBot:
         return resp
 
     def login(self):
-        template = 'login_full.html' if self.login_local else 'login.html'
-        return render_template(template, api_prefix=self.api_prefix)
+        return render_template('login.html', api_prefix=self.api_prefix)
 
     def login_post(self):
         username = request.form.get('username')
@@ -102,6 +107,10 @@ class ChatBot:
         err, user_id, email, _, _ = self.__get_userinfo()
         if err:
             return redirect(url_for('login'))
+        
+        query = request.args.to_dict()
+        if conversation_id:
+            query['chatId'] = conversation_id
 
         props = {
             'props': {
@@ -126,7 +135,7 @@ class ChatBot:
                 '__N_SSP': True
             },
             'page': '/c/[chatId]' if conversation_id else '/',
-            'query': {'chatId': conversation_id} if conversation_id else {},
+            'query': query,
             'buildId': self.build_id,
             'isFallback': False,
             'gssp': True,
@@ -151,7 +160,8 @@ class ChatBot:
                 'groups': [],
             },
             'expires': datetime.utcfromtimestamp(payload['exp']).isoformat(),
-            'accessToken': access_token
+            'accessToken': access_token,
+            'authProvider': 'auth0'
         }
 
         return jsonify(ret)
@@ -199,8 +209,6 @@ class ChatBot:
             'user_country': 'US',
             'features': [
                 'model_switcher',
-                'dfw_message_feedback',
-                'dfw_inline_message_regen_comparison',
                 'model_preview',
                 'system_message',
                 'can_continue',
@@ -211,6 +219,15 @@ class ChatBot:
                 'priority_driven_models_list',
                 'message_style_202305',
                 'layout_may_2023',
+                'plugins_available',
+                'new_model_switcher_20230512',
+                'beta_features',
+                'infinite_scroll_history',
+                'browsing_available',
+                'browsing_inner_monologue',
+                'tools3_dev',
+                'tools3_admin',
+                'tools2',
                 'debug',
             ],
         }
@@ -218,7 +235,7 @@ class ChatBot:
         return jsonify(ret)
 
 
-bot = ChatBot(login_local=True)
+bot = ChatBot()
 resource_path = abspath(join(dirname(__file__), 'flask'))
 app = Flask(__name__, static_url_path='',
             static_folder=join(resource_path, 'static'),
@@ -236,6 +253,9 @@ app.route(
 app.route('/')(bot.chat)
 app.route('/c')(bot.chat)
 app.route('/c/<conversation_id>')(bot.chat)
+
+app.route('/chat')(bot.chat_index)
+app.route('/chat/<conversation_id>')(bot.chat_index)
 
 app.route('/auth/login')(bot.login)
 app.route('/auth/login', methods=['POST'])(bot.login_post)
