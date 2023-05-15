@@ -62,7 +62,8 @@ class ChatBot:
         return resp
 
     def login(self):
-        return render_template('login.html', api_prefix=self.api_prefix)
+        template = 'login_full.html' if self.login_local else 'login.html'
+        return render_template(template, api_prefix=self.api_prefix)
 
     def login_post(self):
         username = request.form.get('username')
