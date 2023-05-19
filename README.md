@@ -16,4 +16,4 @@ vercel dev
 对话 api 请求地址，默认为 `https://ai.fakeopen.com`，可以设置为你部署后的域名，如测试网址 `https://pandora-vercel-lovat.vercel.app`
 
 #### `LOGIN_LOCAL`  
-是否启用账号密码登录，由于登录限频为 5/d，故默认为 `False`。
+是否启用账号密码登录。Pandora 现已支持直接登录，故默认为 `True`或 1。
