@@ -10,17 +10,17 @@ from pandora.exts.token import check_access_token
 from pandora.openai.auth import Auth0
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-__version__ = '0.2.1'
+__version__ = '0.3.1'
 
 
 class ChatBot:
-    build_id = '35uzIQibpwv56FyPcgmGz'
+    build_id = 'MYarkpkg17PeZHlffaxc-'
 
     def __init__(self, proxy=None, debug=False, sentry=False):
         self.proxy = proxy
         self.debug = debug
         self.sentry = sentry
-        self.login_local = getenv('LOGIN_LOCAL',True)
+        self.login_local = getenv('LOGIN_LOCAL', True)
         self.log_level = logging.DEBUG if debug else logging.WARN
         self.api_prefix = getenv('CHATGPT_API_PREFIX',
                                  'https://ai.fakeopen.com')
@@ -41,6 +41,8 @@ class ChatBot:
         access_token = request.cookies.get('access-token')
         try:
             payload = check_access_token(access_token)
+            if 'https://api.openai.com/auth' not in payload or 'https://api.openai.com/profile' not in payload:
+                raise Exception('invalid access token')
         except:
             return True, None, None, None, None
 
@@ -48,7 +50,7 @@ class ChatBot:
         email = payload['https://api.openai.com/profile']['email']
 
         return False, user_id, email, access_token, payload
-    
+
     @staticmethod
     def chat_index(conversation_id=None):
         resp = redirect('/')
@@ -108,7 +110,7 @@ class ChatBot:
         err, user_id, email, _, _ = self.__get_userinfo()
         if err:
             return redirect(url_for('login'))
-        
+
         query = request.args.to_dict()
         if conversation_id:
             query['chatId'] = conversation_id
@@ -199,39 +201,61 @@ class ChatBot:
     @staticmethod
     def check():
         ret = {
-            'account_plan': {
-                'is_paid_subscription_active': True,
-                'subscription_plan': 'chatgptplusplan',
-                'account_user_role': 'account-owner',
-                'was_paid_customer': True,
-                'has_customer_object': True,
-                'subscription_expires_at_timestamp': 3774355199
+            'accounts': {
+                'default': {
+                    'account': {
+                        'account_user_role': 'account-owner',
+                        'account_user_id': 'd0322341-7ace-4484-b3f7-89b03e82b927',
+                        'processor': {
+                            'a001': {
+                                'has_customer_object': True
+                            },
+                            'b001': {
+                                'has_transaction_history': True
+                            }
+                        },
+                        'account_id': 'a323bd05-db25-4e8f-9173-2f0c228cc8fa',
+                        'is_most_recent_expired_subscription_gratis': True,
+                        'has_previously_paid_subscription': True
+                    },
+                    'features': [
+                        'model_switcher',
+                        'model_preview',
+                        'system_message',
+                        'data_controls_enabled',
+                        'data_export_enabled',
+                        'show_existing_user_age_confirmation_modal',
+                        'bucketed_history',
+                        'priority_driven_models_list',
+                        'message_style_202305',
+                        'layout_may_2023',
+                        'plugins_available',
+                        'beta_features',
+                        'infinite_scroll_history',
+                        'browsing_available',
+                        'browsing_inner_monologue',
+                        'browsing_bing_branding',
+                        'shareable_links',
+                        'plugin_display_params',
+                        'tools3_dev',
+                        'tools2',
+                        'debug',
+                    ],
+                    'entitlement': {
+                        'subscription_id': 'd0dcb1fc-56aa-4cd9-90ef-37f1e03576d3',
+                        'has_active_subscription': True,
+                        'subscription_plan': 'chatgptplusplan',
+                        'expires_at': '2089-08-08T23:59:59+00:00'
+                    },
+                    'last_active_subscription': {
+                        'subscription_id': 'd0dcb1fc-56aa-4cd9-90ef-37f1e03576d3',
+                        'purchase_origin_platform': 'chatgpt_mobile_ios',
+                        'will_renew': True
+                    }
+                }
             },
-            'user_country': 'US',
-            'features': [
-                'model_switcher',
-                'model_preview',
-                'system_message',
-                'can_continue',
-                'data_controls_enabled',
-                'data_export_enabled',
-                'show_existing_user_age_confirmation_modal',
-                'bucketed_history',
-                'priority_driven_models_list',
-                'message_style_202305',
-                'layout_may_2023',
-                'plugins_available',
-                'beta_features',
-                'infinite_scroll_history',
-                'browsing_available',
-                'browsing_inner_monologue',
-                'tools3_dev',
-                'tools3_admin',
-                'tools2',
-                'debug',
-            ],
+            'temp_ap_available_at': '2023-05-20T17:30:00+00:00'
         }
-
         return jsonify(ret)
 
 
@@ -244,7 +268,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_port=1)
 app.after_request(bot.after_request)
 
 app.route('/api/auth/session')(bot.session)
-app.route('/api/accounts/check')(bot.check)
+app.route('/api/accounts/check/v4-2023-04-27')(bot.check)
 app.route('/auth/logout')(bot.logout)
 app.route('/_next/data/{}/index.json'.format(bot.build_id))(bot.chat_info)
 app.route(
