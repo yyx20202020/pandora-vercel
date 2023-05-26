@@ -10,7 +10,7 @@ from pandora.exts.token import check_access_token
 from pandora.openai.auth import Auth0
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-__version__ = '0.3.1'
+__version__ = '0.3.2'
 
 
 class ChatBot:
