@@ -70,12 +70,13 @@ class ChatBot:
     def login_post(self):
         username = request.form.get('username')
         password = request.form.get('password')
+        mfa = request.form.get('mfa')
         error = None
 
         if username and password:
             try:
                 access_token = Auth0(username, password,
-                                     self.proxy).auth(self.login_local)
+                                     self.proxy,mfa=mfa).auth(self.login_local)
                 payload = check_access_token(access_token)
 
                 resp = make_response('please wait...', 302)
