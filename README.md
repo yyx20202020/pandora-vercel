@@ -1,3 +1,5 @@
+# 开源项目可以魔改，但请保留原作者信息！！
+
 # Pandora-Vercel
 本项目修改了 `Pandora-Cloud` 的代码结构，使其能够在 `vercel` 以及 `Zeabur` 上部署  
 
