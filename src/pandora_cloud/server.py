@@ -5,16 +5,17 @@ from datetime import datetime
 from os import getenv
 from os.path import join, abspath, dirname
 
+import httpx
 from flask import Flask, jsonify, request, render_template, redirect, url_for, make_response
 from pandora.exts.token import check_access_token
 from pandora.openai.auth import Auth0
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-__version__ = '0.3.2'
+__version__ = '0.4.0'
 
 
 class ChatBot:
-    build_id = 'MYarkpkg17PeZHlffaxc-'
+    build_id = 'cx416mT2Lb0ZTj5FxFg1l'
 
     def __init__(self, proxy=None, debug=False, sentry=False):
         self.proxy = proxy
@@ -37,7 +38,7 @@ class ChatBot:
                         path='/', domain=None, httponly=True, samesite='Lax')
 
     @staticmethod
-    def __get_userinfo():
+    async def __get_userinfo():
         access_token = request.cookies.get('access-token')
         try:
             payload = check_access_token(access_token)
@@ -51,23 +52,33 @@ class ChatBot:
 
         return False, user_id, email, access_token, payload
 
+    async def __fetch_share_detail(self, share_id):
+        url = self.api_prefix + '/api/share/{}'.format(share_id)
+
+        async with httpx.AsyncClient(proxies=self.proxy, timeout=30) as client:
+            response = await client.get(url)
+            if response.status_code != 200:
+                raise Exception('failed to fetch share detail')
+
+            return response.json()
+        
     @staticmethod
-    def chat_index(conversation_id=None):
+    async def chat_index(conversation_id=None):
         resp = redirect('/')
 
         return resp
 
-    def logout(self):
+    async def logout(self):
         resp = redirect(url_for('login'))
         self.__set_cookie(resp, '', 0)
 
         return resp
 
-    def login(self):
+    async def login(self):
         template = 'login_full.html' if self.login_local else 'login.html'
         return render_template(template, api_prefix=self.api_prefix)
 
-    def login_post(self):
+    async def login_post(self):
         username = request.form.get('username')
         password = request.form.get('password')
         mfa = request.form.get('mfa')
@@ -90,7 +101,7 @@ class ChatBot:
         template = 'login_full.html' if self.login_local else 'login.html'
         return render_template(template, username=username, error=error, api_prefix=self.api_prefix)
 
-    def login_token(self):
+    async def login_token(self):
         access_token = request.form.get('access_token')
         error = None
 
@@ -107,8 +118,8 @@ class ChatBot:
 
         return jsonify({'code': 500, 'message': 'Invalid access token: {}'.format(error)})
 
-    def chat(self, conversation_id=None):
-        err, user_id, email, _, _ = self.__get_userinfo()
+    async def chat(self, conversation_id=None):
+        err, user_id, email, _, _ = await self.__get_userinfo()
         if err:
             return redirect(url_for('login'))
 
@@ -149,8 +160,8 @@ class ChatBot:
         template = 'detail.html' if conversation_id else 'chat.html'
         return render_template(template, pandora_sentry=self.sentry, api_prefix=self.api_prefix, props=props)
 
-    def session(self):
-        err, user_id, email, access_token, payload = self.__get_userinfo()
+    async def session(self):
+        err, user_id, email, access_token, payload =await self.__get_userinfo()
         if err:
             return jsonify({})
 
@@ -169,9 +180,147 @@ class ChatBot:
         }
 
         return jsonify(ret)
+    
+    async def share_detail(self, share_id):
+        try:
+            share_detail = await self.__fetch_share_detail(share_id)
+        except:
+            props = {
+                'props': {
+                    'pageProps': {'statusCode': 404}
+                },
+                'page': '/_error',
+                'query': {},
+                'buildId': self.build_id,
+                'nextExport': True,
+                'isFallback': False,
+                'gip': True,
+                'scriptLoader': []
+            }
+            return render_template('404.html', pandora_sentry=self.sentry, api_prefix=self.api_prefix, props=props)
 
-    def chat_info(self, conversation_id=None):
-        err, user_id, email, _, _ = self.__get_userinfo()
+        if 'continue_conversation_url' in share_detail:
+            share_detail['continue_conversation_url'] = share_detail['continue_conversation_url'].replace(
+                'https://chat.openai.com', '')
+
+        props = {
+            'props': {
+                'pageProps': {
+                    'sharedConversationId': share_id,
+                    'serverResponse': {
+                        'type': 'data',
+                        'data': share_detail
+                    },
+                    'continueMode': False,
+                    'moderationMode': False,
+                    'chatPageProps': {},
+                },
+                '__N_SSP': True
+            },
+            'page': '/share/[[...shareParams]]',
+            'query': {
+                'shareParams': [share_id]
+            },
+            'buildId': self.build_id,
+            'isFallback': False,
+            'gssp': True,
+            'scriptLoader': []
+        }
+
+        return render_template('share.html', pandora_sentry=self.sentry, api_prefix=self.api_prefix, props=props)
+
+    @staticmethod
+    async def share_continue(share_id):
+        return redirect('/share/{}'.format(share_id), code=308)
+
+    async def share_info(self, share_id):
+        try:
+            share_detail = await self.__fetch_share_detail(share_id)
+        except:
+            return jsonify({'notFound': True})
+
+        if 'continue_conversation_url' in share_detail:
+            share_detail['continue_conversation_url'] = share_detail['continue_conversation_url'].replace(
+                'https://chat.openai.com', '')
+
+        props = {
+            'pageProps': {
+                'sharedConversationId': share_id,
+                'serverResponse': {
+                    'type': 'data',
+                    'data': share_detail,
+                },
+                'continueMode': False,
+                'moderationMode': False,
+                'chatPageProps': {},
+            },
+            '__N_SSP': True
+        }
+
+        return jsonify(props)
+
+    async def share_continue_info(self, share_id):
+        err, user_id, email, access_token, _ = await self.__get_userinfo()
+        if err:
+            return jsonify({'pageProps': {'__N_REDIRECT': '/share/{}'.format(share_id), '__N_REDIRECT_STATUS': 308},
+                            '__N_SSP': True})
+
+        share_detail = await self.__fetch_share_detail(share_id)
+        if 'continue_conversation_url' in share_detail:
+            share_detail['continue_conversation_url'] = share_detail['continue_conversation_url'].replace(
+                'https://chat.openai.com', '')
+
+        props = {
+            'pageProps': {
+                'user': {
+                    'id': user_id,
+                    'name': email,
+                    'email': email,
+                    'image': None,
+                    'picture': None,
+                    'groups': [],
+                },
+                'serviceStatus': {},
+                'userCountry': 'US',
+                'geoOk': True,
+                'serviceAnnouncement': {
+                    'paid': {},
+                    'public': {}
+                },
+                'isUserInCanPayGroup': True,
+                'sharedConversationId': share_id,
+                'serverResponse': {
+                    'type': 'data',
+                    'data': share_detail,
+                },
+                'continueMode': True,
+                'moderationMode': False,
+                'chatPageProps': {
+                    'user': {
+                        'id': user_id,
+                        'name': email,
+                        'email': email,
+                        'image': None,
+                        'picture': None,
+                        'groups': [],
+                    },
+                    'serviceStatus': {},
+                    'userCountry': 'US',
+                    'geoOk': True,
+                    'serviceAnnouncement': {
+                        'paid': {},
+                        'public': {}
+                    },
+                    'isUserInCanPayGroup': True,
+                },
+            },
+            '__N_SSP': True
+        }
+
+        return jsonify(props)
+
+    async def chat_info(self, conversation_id=None):
+        err, user_id, email, _, _ =await self.__get_userinfo()
         if err:
             return jsonify({'pageProps': {'__N_REDIRECT': '/auth/login?', '__N_REDIRECT_STATUS': 307}, '__N_SSP': True})
 
@@ -200,7 +349,7 @@ class ChatBot:
         return jsonify(ret)
 
     @staticmethod
-    def check():
+    async def check():
         ret = {
             'accounts': {
                 'default': {
@@ -272,8 +421,9 @@ app.route('/api/auth/session')(bot.session)
 app.route('/api/accounts/check/v4-2023-04-27')(bot.check)
 app.route('/auth/logout')(bot.logout)
 app.route('/_next/data/{}/index.json'.format(bot.build_id))(bot.chat_info)
-app.route(
-    '/_next/data/{}/c/<conversation_id>.json'.format(bot.build_id))(bot.chat_info)
+app.route('/_next/data/{}/c/<conversation_id>.json'.format(bot.build_id))(bot.chat_info)
+app.route('/_next/data/{}/share/<share_id>.json'.format(bot.build_id))(bot.share_info)
+app.route('/_next/data/{}/share/<share_id>/continue.json'.format(bot.build_id))(bot.share_continue_info)
 
 app.route('/')(bot.chat)
 app.route('/c')(bot.chat)
@@ -281,6 +431,8 @@ app.route('/c/<conversation_id>')(bot.chat)
 
 app.route('/chat')(bot.chat_index)
 app.route('/chat/<conversation_id>')(bot.chat_index)
+app.route('/share/<share_id>')(bot.share_detail)
+app.route('/share/<share_id>/continue')(bot.share_continue)
 
 app.route('/auth/login')(bot.login)
 app.route('/auth/login', methods=['POST'])(bot.login_post)
