@@ -11,7 +11,7 @@ from pandora.exts.token import check_access_token
 from pandora.openai.auth import Auth0
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 
 
 class ChatBot:
@@ -76,7 +76,7 @@ class ChatBot:
 
     async def login(self):
         template = 'login_full.html' if self.login_local else 'login.html'
-        return render_template(template, api_prefix=self.api_prefix, next=request.args.get('next'))
+        return render_template(template, api_prefix=self.api_prefix, next=request.args.get('next', ''))
 
     async def login_post(self):
         username = request.form.get('username')
@@ -184,6 +184,10 @@ class ChatBot:
         return jsonify(ret)
     
     async def share_detail(self, share_id):
+        err, user_id, email, _, _ = await self.__get_userinfo()
+        if err:
+            return redirect('/auth/login?next=%2Fshare%2F{}'.format(share_id))
+
         try:
             share_detail = await self.__fetch_share_detail(share_id)
         except:
