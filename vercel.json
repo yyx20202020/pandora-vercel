@@ -11,6 +11,10 @@
       "destination":"https://ai.fakeopen.com/api/:path*"
     },
     {
+      "source":"/v1/:path(.*)",
+      "destination":"https://api.openai.com/v1/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "src/pandora_cloud/server.py"
     }
