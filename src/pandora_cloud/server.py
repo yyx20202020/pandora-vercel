@@ -7,11 +7,12 @@ from os.path import join, abspath, dirname
 
 import httpx
 from flask import Flask, jsonify, request, render_template, redirect, url_for, make_response
+from pandora.exts.hooks import hook_logging
 from pandora.exts.token import check_access_token
 from pandora.openai.auth import Auth0
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-__version__ = '0.4.2'
+__version__ = '0.4.4'
 
 
 class ChatBot:
@@ -26,10 +27,13 @@ class ChatBot:
         self.api_prefix = getenv('CHATGPT_API_PREFIX',
                                  'https://ai.fakeopen.com')
 
+        hook_logging(level=self.log_level,
+                     format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
+        self.logger = logging.getLogger('waitress')
+
     @staticmethod
     def after_request(resp):
         resp.headers['X-Server'] = 'pandora-cloud/{}'.format(__version__)
-
         return resp
 
     @staticmethod
@@ -37,11 +41,14 @@ class ChatBot:
         resp.set_cookie('access-token', token, expires=expires,
                         path='/', domain=None, httponly=True, samesite='Lax')
 
-    @staticmethod
-    async def __get_userinfo():
+    async def __get_userinfo(self):
         access_token = request.cookies.get('access-token')
         try:
             payload = check_access_token(access_token)
+            if True == payload:
+                ti = await self.__fetch_share_tokeninfo(access_token)
+                return False, ti['user_id'], ti['email'], access_token, {'exp': ti['expire_at']}
+
             if 'https://api.openai.com/auth' not in payload or 'https://api.openai.com/profile' not in payload:
                 raise Exception('invalid access token')
         except:
@@ -52,6 +59,16 @@ class ChatBot:
 
         return False, user_id, email, access_token, payload
 
+    async def __fetch_share_tokeninfo(self, share_token):
+        url = self.api_prefix + '/token/info/{}'.format(share_token)
+
+        async with httpx.AsyncClient(proxies=self.proxy, timeout=30) as client:
+            response = await client.get(url)
+            if response.status_code != 200:
+                raise Exception('failed to fetch share token info')
+
+            return response.json()
+
     async def __fetch_share_detail(self, share_id):
         url = self.api_prefix + '/api/share/{}'.format(share_id)
 
@@ -61,7 +78,7 @@ class ChatBot:
                 raise Exception('failed to fetch share detail')
 
             return response.json()
-        
+
     @staticmethod
     async def chat_index(conversation_id=None):
         resp = redirect('/')
@@ -81,14 +98,14 @@ class ChatBot:
     async def login_post(self):
         username = request.form.get('username')
         password = request.form.get('password')
+        mfa_code = request.form.get('mfa_code')
         next_url = request.form.get('next')
-        mfa = request.form.get('mfa')
         error = None
 
         if username and password:
             try:
-                access_token = Auth0(username, password,
-                                     self.proxy,mfa=mfa).auth(self.login_local)
+                access_token = Auth0(
+                    username, password, self.proxy, mfa=mfa_code).auth(self.login_local)
                 payload = check_access_token(access_token)
 
                 resp = make_response('please wait...', 302)
@@ -110,8 +127,12 @@ class ChatBot:
         if access_token:
             try:
                 payload = check_access_token(access_token)
+                if True == payload:
+                    ti = await self.__fetch_share_tokeninfo(access_token)
+                    payload = {'exp': ti['expire_at']}
 
-                resp = jsonify({'code': 0, 'url': next_url if next_url else '/'})
+                resp = jsonify(
+                    {'code': 0, 'url': next_url if next_url else '/'})
                 self.__set_cookie(resp, access_token, payload['exp'])
 
                 return resp
@@ -163,7 +184,7 @@ class ChatBot:
         return render_template(template, pandora_sentry=self.sentry, api_prefix=self.api_prefix, props=props)
 
     async def session(self):
-        err, user_id, email, access_token, payload =await self.__get_userinfo()
+        err, user_id, email, access_token, payload = await self.__get_userinfo()
         if err:
             return jsonify({})
 
@@ -182,7 +203,7 @@ class ChatBot:
         }
 
         return jsonify(ret)
-    
+
     async def share_detail(self, share_id):
         err, user_id, email, _, _ = await self.__get_userinfo()
         if err:
@@ -266,7 +287,7 @@ class ChatBot:
         return jsonify(props)
 
     async def share_continue_info(self, share_id):
-        err, user_id, email, access_token, _ = await self.__get_userinfo()
+        err, user_id, email, _, _ = await self.__get_userinfo()
         if err:
             return jsonify({
                 'pageProps': {
@@ -331,7 +352,7 @@ class ChatBot:
         return jsonify(props)
 
     async def chat_info(self, conversation_id=None):
-        err, user_id, email, _, _ =await self.__get_userinfo()
+        err, user_id, email, _, _ = await self.__get_userinfo()
         if err:
             return jsonify({'pageProps': {'__N_REDIRECT': '/auth/login?', '__N_REDIRECT_STATUS': 307}, '__N_SSP': True})
 
@@ -417,6 +438,7 @@ class ChatBot:
             },
             'temp_ap_available_at': '2023-05-20T17:30:00+00:00'
         }
+
         return jsonify(ret)
 
 
@@ -440,10 +462,11 @@ app.route('/')(bot.chat)
 app.route('/c')(bot.chat)
 app.route('/c/<conversation_id>')(bot.chat)
 
-app.route('/chat')(bot.chat_index)
-app.route('/chat/<conversation_id>')(bot.chat_index)
 app.route('/share/<share_id>')(bot.share_detail)
 app.route('/share/<share_id>/continue')(bot.share_continue)
+
+app.route('/chat')(bot.chat_index)
+app.route('/chat/<conversation_id>')(bot.chat_index)
 
 app.route('/auth/login')(bot.login)
 app.route('/auth/login', methods=['POST'])(bot.login_post)
